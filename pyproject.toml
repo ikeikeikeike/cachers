@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "cachers"
+version = "0.1.0"
+description = ""
+authors = ["ikeikeikeike <jp.ne.co.jp@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+maturin = "^0.8.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+tox = "^3.20.1"
+
+[build-system]
+requires = ["maturin"]
+build-backend = "maturin"
