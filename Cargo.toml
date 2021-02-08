@@ -30,7 +30,8 @@ classifier = [
 
 
 [dependencies]
-pyo3 = "0.13.0"
+pyo3 = "0.13.1"
+rustc-hash = "1.1.0"
 
 
 [lib]

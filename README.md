@@ -1,5 +1,9 @@
 ## cachers
 
+- https://github.com/Project-Dream-Weaver/Pyre
+- https://github.com/python/cpython/blob/master/Modules/_functoolsmodule.c#L719
+- https://github.com/tkem/cachetools
+
 ## License
 
 Licensed under either of

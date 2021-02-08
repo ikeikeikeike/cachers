@@ -1,5 +1,10 @@
+mod cache;
+mod fifo;
+
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
+// use pyo3::wrap_pyfunction;
+
+use crate::fifo::FIFOCache;
 
 // mod free;
 // use crate::free::*;
@@ -7,6 +12,7 @@ use pyo3::wrap_pyfunction;
 #[pymodule]
 fn cachers(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add_class::<FIFOCache>()?;
     // m.add_wrapped(wrap_pyfunction!(all))?;
     // m.add_wrapped(wrap_pyfunction!(any))?;
     // m.add_wrapped(wrap_pyfunction!(max))?;

@@ -11,6 +11,11 @@ help:  ## Show all of tasks
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
+.PHONY: watch
+watch:  ## watch build
+	RUST_BACKTRACE=1 cargo watch -x 'build'
+
+
 .PHONY: build
 build:  ## Builds Rust code and Python modules
 	poetry run maturin build
