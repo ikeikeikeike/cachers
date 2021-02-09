@@ -1,6 +1,6 @@
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
-// use pyo3::types::{PyDict, PyString};
+use pyo3::types::{PyAny, PyDict, PyString};
 use pyo3::PyResult;
 use rustc_hash::FxHashMap;
 
@@ -77,6 +77,17 @@ impl Cache {
 
     pub fn __len__(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn update(&mut self, py: Python, values: &PyAny) -> PyResult<()> {
+        values.iter()?.try_for_each(|elt| -> PyResult<()> {
+            let tuple = elt?;
+            let key = tuple.get_item(0)?;
+            let value = tuple.get_item(1)?;
+
+            self.data.insert(key.to_string(), value.to_object(py));
+            Ok(())
+        })
     }
 
     pub fn get<'a>(&'a self, key: String, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {

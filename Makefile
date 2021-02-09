@@ -11,9 +11,19 @@ help:  ## Show all of tasks
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-.PHONY: watch
-watch:  ## watch build
+.PHONY: watch-build
+watch-build:  ## watch build
 	RUST_BACKTRACE=1 cargo watch -x 'build'
+
+
+.PHONY: watch-pytest
+watch-test:  ## watch pytest task
+	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest'
+
+
+.PHONY: watch-pytest-one
+watch-test-one:  ## watch pytest-one task
+	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest-one'
 
 
 .PHONY: build

@@ -1,14 +1,15 @@
 // use pyo3::exceptions::PyRuntimeError;
 use pyo3::exceptions::PyKeyError;
+use rustc_hash::FxHashMap;
 // use pyo3::exceptions::{PyKeyError, ValueError};
-// use pyo3::types::{PyDict, PyString};
+use pyo3::types::{PyDict, PyString};
 // use pyo3::class::iter::IterNextOutput;
 use pyo3::prelude::*;
 use pyo3::PyResult;
 
 use crate::cache::Cache;
 
-#[pyclass]
+#[pyclass(dict)]
 pub struct FIFOCache {
     base: Cache,
 }
@@ -81,9 +82,16 @@ impl FIFOCache {
         }
     }
 
+    pub fn update(&mut self, py: Python, values: PyObject) -> PyResult<()> {
+        self.base.update(py, values.cast_as::<PyDict>(py)?.items())
+    }
+
     #[args(default = "None")]
-    pub fn get(&self, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base.get(key, default.as_ref()).map(|t| t.clone()) // TODO: No Clone
+    pub fn get(&self, py: Python, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.base
+            .get(key, default.as_ref())
+            .map(|t| t.clone()) // TODO: No Clone
+            .or(Ok(py.None()))
     }
 
     // pub fn pop(&self, key: String) -> PyResult<&PyObject> {
@@ -99,4 +107,16 @@ impl FIFOCache {
     fn currsize(&self) -> usize {
         self.base.currsize
     }
+
+    // TODO
+    // #[getter]
+    // fn data(&self) -> FxHashMap<String, PyObject> {
+    //     self.base.data
+    // }
+
+    // TODO
+    // #[getter]
+    // fn datasize(&self) -> FxHashMap<String, usize> {
+    //     self.base.datasize
+    // }
 }
