@@ -34,11 +34,16 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
     }
 
     fn __setitem__(&mut self, key: String, value: PyObject) -> PyResult<()> {
-        self.base.__setitem__(key, value, || println!("popitem"))
+        // let popitem = || {
+        //     let _ = self.base.pop(key, None);
+        // };
+        //
+        self.base
+            .__setitem__(key.clone(), value, || println!("need popitem"))
     }
 
     fn __delitem__(&mut self, key: String) {
-        self.base.__delitem__(key)
+        let _ = self.base.__delitem__(key);
     }
 
     fn __len__(&self) -> usize {
@@ -94,9 +99,10 @@ impl FIFOCache {
             .or(Ok(py.None()))
     }
 
-    // pub fn pop(&self, key: String) -> PyResult<&PyObject> {
-    //     self.base.pop(key)
-    // }
+    #[args(default = "None")]
+    pub fn pop(&mut self, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.base.pop(key, default)
+    }
 
     #[getter]
     fn maxsize(&self) -> usize {
@@ -108,15 +114,13 @@ impl FIFOCache {
         self.base.currsize
     }
 
-    // TODO
-    // #[getter]
-    // fn data(&self) -> FxHashMap<String, PyObject> {
-    //     self.base.data
-    // }
+    #[getter]
+    fn data(&self) -> FxHashMap<String, PyObject> {
+        self.base.data.clone() // TODO: No Clone
+    }
 
-    // TODO
-    // #[getter]
-    // fn datasize(&self) -> FxHashMap<String, usize> {
-    //     self.base.datasize
-    // }
+    #[getter]
+    fn datasize(&self) -> FxHashMap<String, usize> {
+        self.base.datasize.clone() // TODO: No Clone
+    }
 }

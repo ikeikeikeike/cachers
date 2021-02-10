@@ -43,7 +43,10 @@ impl Cache {
         self.data.get(&key).ok_or(PyKeyError::new_err(key))
     }
 
-    pub fn __setitem__(&mut self, key: String, value: PyObject, popitem: fn()) -> PyResult<()> {
+    pub fn __setitem__<F>(&mut self, key: String, value: PyObject, mut popitem: F) -> PyResult<()>
+    where
+        F: FnMut(),
+    {
         let maxsize = self.maxsize;
         let size = 1;
         let mut diffsize = 1;
@@ -64,11 +67,14 @@ impl Cache {
         Ok(())
     }
 
-    pub fn __delitem__(&mut self, key: String) {
-        self.data.remove(&key);
+    pub fn __delitem__(&mut self, key: String) -> PyResult<PyObject> {
+        let data = self.data.remove(&key);
+
         if let Some(datasize) = self.datasize.remove(&key) {
             self.currsize -= datasize
         }
+
+        data.ok_or(PyKeyError::new_err(key))
     }
 
     pub fn __contains__(&self, key: String) -> bool {
@@ -98,10 +104,33 @@ impl Cache {
         }
     }
 
-    pub fn pop(&self, key: String) -> PyResult<()> {
-        // self.get(key)
-        Ok(())
+    pub fn pop(&mut self, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.__delitem__(key.clone())
+            .or(default.ok_or(PyKeyError::new_err(key)))
     }
+
+    pub fn popitem(&mut self) -> PyResult<(String, PyObject)> {
+        let maybe_item = self.data.iter().next();
+        if maybe_item.is_none() {
+            return Err(PyKeyError::new_err("stop iter"));
+        }
+
+        self.data
+            .remove_entry(maybe_item.unwrap().0)
+            .ok_or(PyKeyError::new_err("stop iter"))
+    }
+
+    // def popitem(self):
+    //     '''D.popitem() -> (k, v), remove and return some (key, value) pair
+    //        as a 2-tuple; but raise KeyError if D is empty.
+    //     '''
+    //     try:
+    //         key = next(iter(self))
+    //     except StopIteration:
+    //         raise KeyError from None
+    //     value = self[key]
+    //     del self[key]
+    //     return key, value
 
     // def setdefault(&self, key, default=None):
     //     if key in self:
