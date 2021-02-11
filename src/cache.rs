@@ -1,15 +1,30 @@
+use std::string::ToString;
+use strum_macros;
+
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyString};
+use pyo3::types::PyAny;
 use pyo3::PyResult;
+
+use from_variants::FromVariants;
 use rustc_hash::FxHashMap;
+
+#[derive(Clone, Eq, PartialEq, Hash, strum_macros::ToString, FromVariants)]
+pub enum Key {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Str(String),
+    // Array(Vec<Value>),
+    // Object(Map<String, Value>),
+}
 
 pub struct Cache {
     /// A pool of caches
-    pub data: FxHashMap<String, PyObject>,
+    pub data: FxHashMap<Key, PyObject>,
 
     /// A pool of clients size
-    pub datasize: FxHashMap<String, usize>,
+    pub datasize: FxHashMap<Key, usize>,
 
     /// A internal counter for assigning new cache indexes
     pub currsize: usize,
@@ -39,11 +54,13 @@ impl Cache {
         )
     }
 
-    pub fn __getitem__(&self, key: String) -> PyResult<&PyObject> {
-        self.data.get(&key).ok_or(PyKeyError::new_err(key))
+    pub fn __getitem__(&self, key: Key) -> PyResult<&PyObject> {
+        self.data
+            .get(&key)
+            .ok_or(PyKeyError::new_err(key.to_string()))
     }
 
-    pub fn __setitem__(&mut self, key: String, value: PyObject) -> PyResult<()> {
+    pub fn __setitem__(&mut self, key: Key, value: PyObject) -> PyResult<()> {
         let maxsize = self.maxsize;
         let size = 1;
         let mut diffsize = 1;
@@ -64,17 +81,17 @@ impl Cache {
         Ok(())
     }
 
-    pub fn __delitem__(&mut self, key: String) -> PyResult<PyObject> {
+    pub fn __delitem__(&mut self, key: Key) -> PyResult<PyObject> {
         let data = self.data.remove(&key);
 
         if let Some(datasize) = self.datasize.remove(&key) {
             self.currsize -= datasize
         }
 
-        data.ok_or(PyKeyError::new_err(key))
+        data.ok_or(PyKeyError::new_err(key.to_string()))
     }
 
-    pub fn __contains__(&self, key: String) -> bool {
+    pub fn __contains__(&self, key: Key) -> bool {
         self.data.contains_key(&key)
     }
 
@@ -88,25 +105,25 @@ impl Cache {
             let key = tuple.get_item(0)?;
             let value = tuple.get_item(1)?;
 
-            self.data.insert(key.to_string(), value.to_object(py));
+            self.data.insert(key, value.to_object(py));
             Ok(())
         })
     }
 
-    pub fn get<'a>(&'a self, key: String, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
+    pub fn get<'a>(&'a self, key: Key, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
         if let Some(value) = self.data.get(&key) {
             Ok(value)
         } else {
-            default.ok_or(PyKeyError::new_err(key))
+            default.ok_or(PyKeyError::new_err(key.to_string()))
         }
     }
 
-    pub fn pop(&mut self, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
+    pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
         self.__delitem__(key.clone())
-            .or(default.ok_or(PyKeyError::new_err(key)))
+            .or(default.ok_or(PyKeyError::new_err(key.to_string())))
     }
 
-    pub fn popitem(&mut self) -> PyResult<(String, PyObject)> {
+    pub fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
         let maybe_item = self.data.iter_mut().next();
 
         if maybe_item.is_none() {
