@@ -8,7 +8,7 @@ use pyo3::PyResult;
 
 use rustc_hash::FxHashMap;
 
-use crate::cache::{Cache, Key};
+use crate::cache::{Cache, Data, Key};
 
 #[pyclass(dict)]
 pub struct FIFOCache {
@@ -30,11 +30,11 @@ impl pyo3::class::basic::PyObjectProtocol for FIFOCache {
 
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for FIFOCache {
-    fn __getitem__(&self, key: String) -> PyResult<&PyObject> {
+    fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
         self.base.__getitem__(Key::from(key))
     }
 
-    fn __setitem__(&mut self, key: String, value: PyObject) -> PyResult<()> {
+    fn __setitem__(&mut self, key: &PyAny, value: PyObject) -> PyResult<()> {
         // let popitem = || {
         //     let _ = self.base.pop(Key::from(key), None);
         // };
@@ -42,7 +42,7 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
         self.base.__setitem__(Key::from(key).clone(), value)
     }
 
-    fn __delitem__(&mut self, key: String) {
+    fn __delitem__(&mut self, key: &PyAny) {
         let _ = self.base.__delitem__(Key::from(key));
     }
 
@@ -53,7 +53,7 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
 
 #[pyproto]
 impl pyo3::class::PySequenceProtocol for FIFOCache {
-    fn __contains__(&self, key: String) -> bool {
+    fn __contains__(&self, key: &PyAny) -> bool {
         self.base.__contains__(Key::from(key))
     }
 }
@@ -92,7 +92,7 @@ impl FIFOCache {
     }
 
     #[args(default = "None")]
-    pub fn get(&self, py: Python, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
+    pub fn get(&self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.base
             .get(Key::from(key), default.as_ref())
             .map(|t| t.clone()) // TODO: No Clone
@@ -100,7 +100,7 @@ impl FIFOCache {
     }
 
     #[args(default = "None")]
-    pub fn pop(&mut self, key: String, default: Option<PyObject>) -> PyResult<PyObject> {
+    pub fn pop(&mut self, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.base.pop(Key::from(key), default)
     }
 
@@ -115,7 +115,7 @@ impl FIFOCache {
     }
 
     #[getter]
-    fn data(&self) -> FxHashMap<Key, PyObject> {
+    fn data(&self) -> Data {
         self.base.data.clone() // TODO: No Clone
     }
 

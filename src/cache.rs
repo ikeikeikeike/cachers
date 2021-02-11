@@ -15,13 +15,59 @@ pub enum Key {
     Bool(bool),
     Int(i64),
     Str(String),
-    // Array(Vec<Value>),
-    // Object(Map<String, Value>),
+    // IntTuple(usize, usize), // input is a 2-tuple with positive ints
+    // StringIntTuple(String, usize), // input is a 2-tuple with String and int
+    // (Key, Key),
+}
+impl From<&PyAny> for Key {
+    fn from(key: &PyAny) -> Self {
+        if let Ok(value) = key.extract::<bool>() {
+            Key::Bool(value)
+        } else if let Ok(value) = key.extract::<i64>() {
+            Key::Int(value)
+        } else if let Ok(value) = key.extract::<String>() {
+            Key::Str(value)
+        } else {
+            Key::Null
+        }
+    }
 }
 
+impl IntoPy<PyObject> for Key {
+    fn into_py(self, py: Python) -> PyObject {
+        self.into_py(py).to_object(py) // TODO:
+    }
+}
+
+// impl pyo3::callback::IntoPyCallbackOutput<bool> for Key {
+//     // #[inline]
+//     fn convert(self, _py: Python) -> PyResult<bool> {
+//         Ok(true)
+//     }
+// }
+// impl pyo3::callback::IntoPyCallbackOutput<i64> for Key {
+//     // #[inline]
+//     fn convert(self, _py: Python) -> PyResult<i64> {
+//         Ok(1)
+//     }
+// }
+// impl pyo3::callback::IntoPyCallbackOutput<String> for Key {
+//     // #[inline]
+//     fn convert(self, _py: Python) -> PyResult<String> {
+//         Ok(String::from("true"))
+//     }
+// }
+// impl pyo3::callback::IntoPyCallbackOutput<Null> for Key {
+//     #[inline]
+//     fn convert(self, _py: Python) -> PyResult<Null> {
+//         Ok(Null)
+//     }
+// }
+
+pub type Data = FxHashMap<Key, PyObject>;
 pub struct Cache {
     /// A pool of caches
-    pub data: FxHashMap<Key, PyObject>,
+    pub data: Data,
 
     /// A pool of clients size
     pub datasize: FxHashMap<Key, usize>,
@@ -102,10 +148,10 @@ impl Cache {
     pub fn update(&mut self, py: Python, values: &PyAny) -> PyResult<()> {
         values.iter()?.try_for_each(|elt| -> PyResult<()> {
             let tuple = elt?;
-            let key = tuple.get_item(0)?;
-            let value = tuple.get_item(1)?;
+            let key = Key::from(tuple.get_item(0)?);
+            let value = tuple.get_item(1)?.to_object(py);
 
-            self.data.insert(key, value.to_object(py));
+            self.data.insert(key, value);
             Ok(())
         })
     }
