@@ -38,8 +38,7 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
         //     let _ = self.base.pop(key, None);
         // };
         //
-        self.base
-            .__setitem__(key.clone(), value, || println!("need popitem"))
+        self.base.__setitem__(key.clone(), value)
     }
 
     fn __delitem__(&mut self, key: String) {

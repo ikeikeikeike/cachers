@@ -43,17 +43,14 @@ impl Cache {
         self.data.get(&key).ok_or(PyKeyError::new_err(key))
     }
 
-    pub fn __setitem__<F>(&mut self, key: String, value: PyObject, mut popitem: F) -> PyResult<()>
-    where
-        F: FnMut(),
-    {
+    pub fn __setitem__(&mut self, key: String, value: PyObject) -> PyResult<()> {
         let maxsize = self.maxsize;
         let size = 1;
         let mut diffsize = 1;
 
         if !self.data.contains_key(&key) {
             while self.currsize + size > maxsize {
-                popitem()
+                let _ = self.popitem();
             }
         }
 
@@ -110,27 +107,19 @@ impl Cache {
     }
 
     pub fn popitem(&mut self) -> PyResult<(String, PyObject)> {
-        let maybe_item = self.data.iter().next();
+        let maybe_item = self.data.iter_mut().next();
+
         if maybe_item.is_none() {
-            return Err(PyKeyError::new_err("stop iter"));
+            return Err(PyKeyError::new_err("stop iteration"));
         }
 
-        self.data
-            .remove_entry(maybe_item.unwrap().0)
-            .ok_or(PyKeyError::new_err("stop iter"))
-    }
+        let item = maybe_item.unwrap();
 
-    // def popitem(self):
-    //     '''D.popitem() -> (k, v), remove and return some (key, value) pair
-    //        as a 2-tuple; but raise KeyError if D is empty.
-    //     '''
-    //     try:
-    //         key = next(iter(self))
-    //     except StopIteration:
-    //         raise KeyError from None
-    //     value = self[key]
-    //     del self[key]
-    //     return key, value
+        let key = item.0.clone(); // TODO: no clone
+        let value = self.__delitem__(key.clone())?; // TODO: no clone
+
+        Ok((key.clone(), value))
+    }
 
     // def setdefault(&self, key, default=None):
     //     if key in self:
