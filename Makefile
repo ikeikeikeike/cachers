@@ -12,17 +12,17 @@ help:  ## Show all of tasks
 
 
 .PHONY: watch-build
-watch-build:  ## watch build
+watch-build:  ## watch build: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 	RUST_BACKTRACE=1 cargo watch -x 'build'
 
 
 .PHONY: watch-pytest
-watch-test:  ## watch pytest task
+watch-test:  ## watch pytest task: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest'
 
 
 .PHONY: watch-pytest-one
-watch-test-one:  ## watch pytest-one task
+watch-test-one:  ## watch pytest-one task: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
 	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest-one'
 
 

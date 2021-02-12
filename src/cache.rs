@@ -3,10 +3,12 @@ use strum_macros;
 
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
-use pyo3::types::PyAny;
+use pyo3::types::{PyAny, PyString};
 use pyo3::PyResult;
 
 use from_variants::FromVariants;
+use itertools::Itertools;
+use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
 
 #[derive(Clone, Eq, PartialEq, Hash, strum_macros::ToString, FromVariants)]
@@ -19,6 +21,7 @@ pub enum Key {
     // StringIntTuple(String, usize), // input is a 2-tuple with String and int
     // (Key, Key),
 }
+
 impl From<&PyAny> for Key {
     fn from(key: &PyAny) -> Self {
         if let Ok(value) = key.extract::<bool>() {
@@ -35,7 +38,12 @@ impl From<&PyAny> for Key {
 
 impl IntoPy<PyObject> for Key {
     fn into_py(self, py: Python) -> PyObject {
-        self.into_py(py).to_object(py) // TODO:
+        match self {
+            Key::Bool(value) => value.to_object(py),
+            Key::Int(value) => value.to_object(py),
+            Key::Str(value) => value.to_object(py),
+            _ => py.None(),
+        }
     }
 }
 
@@ -64,6 +72,8 @@ impl IntoPy<PyObject> for Key {
 //     }
 // }
 
+pub static MARKER: OnceCell<PyObject> = OnceCell::new();
+
 pub type Data = FxHashMap<Key, PyObject>;
 pub struct Cache {
     /// A pool of caches
@@ -79,9 +89,6 @@ pub struct Cache {
     pub maxsize: usize,
 }
 
-// Non python imples
-// impl Cache {}
-
 impl Cache {
     /// Create a new cache with a given ....
     pub fn new(maxsize: usize) -> Self {
@@ -94,16 +101,11 @@ impl Cache {
     }
 
     pub fn __repr__(&self) -> String {
-        format!(
-            "Cache(maxsize={}, currsize={})",
-            self.maxsize, self.currsize
-        )
+        format!("Cache(maxsize={}, currsize={})", self.maxsize, self.currsize,)
     }
 
     pub fn __getitem__(&self, key: Key) -> PyResult<&PyObject> {
-        self.data
-            .get(&key)
-            .ok_or(PyKeyError::new_err(key.to_string()))
+        self.data.get(&key).ok_or(PyKeyError::new_err(key))
     }
 
     pub fn __setitem__(&mut self, key: Key, value: PyObject) -> PyResult<()> {
@@ -134,7 +136,7 @@ impl Cache {
             self.currsize -= datasize
         }
 
-        data.ok_or(PyKeyError::new_err(key.to_string()))
+        data.ok_or(PyKeyError::new_err(key))
     }
 
     pub fn __contains__(&self, key: Key) -> bool {
@@ -151,7 +153,7 @@ impl Cache {
             let key = Key::from(tuple.get_item(0)?);
             let value = tuple.get_item(1)?.to_object(py);
 
-            self.data.insert(key, value);
+            let _ = self.__setitem__(key, value);
             Ok(())
         })
     }
@@ -160,13 +162,18 @@ impl Cache {
         if let Some(value) = self.data.get(&key) {
             Ok(value)
         } else {
-            default.ok_or(PyKeyError::new_err(key.to_string()))
+            default.ok_or(PyKeyError::new_err(key))
         }
     }
 
-    pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.__delitem__(key.clone())
-            .or(default.ok_or(PyKeyError::new_err(key.to_string())))
+    pub fn pop(&mut self, py: Python, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.__delitem__(key).or_else(|err| {
+            if MARKER.get() == default.as_ref() {
+                return Err(err);
+            }
+
+            default.map_or(Ok(py.None()), |elt| Ok(elt))
+        })
     }
 
     pub fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
@@ -184,10 +191,15 @@ impl Cache {
         Ok((key.clone(), value))
     }
 
-    // def setdefault(&self, key, default=None):
-    //     if key in self:
-    //         value = self[key]
-    //     else:
-    //         self[key] = value = default
-    //     return value
+    pub fn setdefault<'a>(&'a mut self, py: Python, key: Key, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
+        if self.data.contains_key(&key) {
+            return self.__getitem__(key);
+        }
+
+        let uvalue = default.map_or(py.None(), |elm| elm.to_object(py));
+        let rvalue = default.ok_or(PyKeyError::new_err(key.to_string()));
+
+        let _ = self.__setitem__(key, uvalue);
+        rvalue
+    }
 }

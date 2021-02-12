@@ -1,16 +1,17 @@
 // use pyo3::exceptions::PyRuntimeError;
-// use pyo3::exceptions::{PyKeyError, ValueError};
 // use pyo3::class::iter::IterNextOutput;
 // use pyo3::exceptions::PyKeyError;
+// use pyo3::exceptions::PyStopIteration;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyString};
 use pyo3::PyResult;
 
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 
-use crate::cache::{Cache, Data, Key};
+use crate::cache::{Cache, Data, Key, MARKER};
 
-#[pyclass(dict)]
+#[pyclass(dict, subclass)]
 pub struct FIFOCache {
     base: Cache,
 }
@@ -42,8 +43,8 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
         self.base.__setitem__(Key::from(key).clone(), value)
     }
 
-    fn __delitem__(&mut self, key: &PyAny) {
-        let _ = self.base.__delitem__(Key::from(key));
+    fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
+        self.base.__delitem__(Key::from(key)).and_then(|_| Ok(()))
     }
 
     fn __len__(&self) -> usize {
@@ -61,19 +62,18 @@ impl pyo3::class::PySequenceProtocol for FIFOCache {
 // #[pyproto]
 // impl pyo3::class::PyIterProtocol for FIFOCache {
 //     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
-//         slf.base.data.keys().copied().collect();
 //         slf
 //     }
 //
-//     fn __next__(slf: PyRefMut<Self>) -> IterNextOutput<String, &'static str> {
-//         let keys = slf.base.data.keys();
-//
-//         for key in keys {
-//             println!("{}", key);
-//             return IterNextOutput::Yield(String::from(key));
+//     fn __next__(mut slf: PyRefMut<Self>) -> PyResult<Key> {
+//         let maybe_item = slf.base.data.iter_mut().next();
+//         if maybe_item.is_none() {
+//             return Err(PyStopIteration::new_err("stop iteration"));
 //         }
 //
-//         IterNextOutput::Return("ended items")
+//         let item = maybe_item.unwrap();
+//
+//         item.0.clone()
 //     }
 // }
 
@@ -87,21 +87,28 @@ impl FIFOCache {
         }
     }
 
-    pub fn update(&mut self, py: Python, values: PyObject) -> PyResult<()> {
+    fn update(&mut self, py: Python, values: PyObject) -> PyResult<()> {
         self.base.update(py, values.cast_as::<PyDict>(py)?.items())
     }
 
     #[args(default = "None")]
-    pub fn get(&self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
+    fn get(&self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.base
             .get(Key::from(key), default.as_ref())
             .map(|t| t.clone()) // TODO: No Clone
             .or(Ok(py.None()))
     }
 
+    #[args(default = "MARKER.get().unwrap().clone()")]
+    fn pop(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.base.pop(py, Key::from(key), default)
+    }
+
     #[args(default = "None")]
-    pub fn pop(&mut self, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base.pop(Key::from(key), default)
+    fn setdefault(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.base
+            .setdefault(py, Key::from(key), default.as_ref())
+            .map(|t| t.clone()) // TODO: No Clone
     }
 
     #[getter]

@@ -2,15 +2,12 @@ mod cache;
 mod fifo;
 
 use pyo3::prelude::*;
-// use pyo3::wrap_pyfunction;
 
+use crate::cache::MARKER;
 use crate::fifo::FIFOCache;
 
-// mod free;
-// use crate::free::*;
-
 #[pymodule]
-fn cachers(_py: Python, m: &PyModule) -> PyResult<()> {
+fn cachers(py: Python, m: &PyModule) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<FIFOCache>()?;
     // m.add_wrapped(wrap_pyfunction!(all))?;
@@ -18,6 +15,8 @@ fn cachers(_py: Python, m: &PyModule) -> PyResult<()> {
     // m.add_wrapped(wrap_pyfunction!(max))?;
     // m.add_wrapped(wrap_pyfunction!(join))?;
     // m.add_wrapped(wrap_pyfunction!(sorted))?;
+
+    let _ = MARKER.set(py.eval("object()", None, None)?.to_object(py));
 
     Ok(())
 }
