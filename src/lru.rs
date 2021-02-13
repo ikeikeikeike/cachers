@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::PyResult;
@@ -8,8 +10,11 @@ use crate::cache::{Cache, Data, Datasize, Key, MARKER};
 
 #[pyclass(dict, subclass)]
 pub struct LRUCache {
-    base: Cache,
+    cache: RefCell<Cache>,
 }
+
+// Non python imples
+// impl LRUCache {}
 
 #[pymethods]
 impl LRUCache {
@@ -17,27 +22,33 @@ impl LRUCache {
     #[new]
     fn new(maxsize: usize) -> Self {
         Self {
-            base: Cache::new(maxsize),
+            cache: RefCell::new(Cache::new(maxsize)),
         }
     }
 
     fn update(&mut self, py: Python, values: PyObject) -> PyResult<()> {
-        self.base.update(py, values.cast_as::<PyDict>(py)?.items())
+        self.cache
+            .borrow_mut()
+            .update(py, values.cast_as::<PyDict>(py)?.items())
     }
 
     #[args(default = "None")]
     fn get(&self, py: Python, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
+        self.cache
+            .borrow()
+            .get(py, Key::from(key), default.as_ref())
+            .map(|t| t.clone()) // TODO: No Clone
     }
 
     #[args(default = "MARKER.get().unwrap().clone()")]
     fn pop(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base.pop(py, Key::from(key), default)
+        self.cache.borrow_mut().pop(py, Key::from(key), default)
     }
 
     #[args(default = "None")]
     fn setdefault(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base
+        self.cache
+            .borrow_mut()
             .setdefault(py, Key::from(key), default.as_ref())
             .map(|t| t.clone()) // TODO: No Clone
     }
@@ -64,66 +75,71 @@ impl LRUCache {
     // }
 
     fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        self.base.popitem()
+        self.cache.borrow_mut().popitem()
     }
 
     #[getter]
     fn maxsize(&self) -> usize {
-        self.base.maxsize
+        self.cache.borrow().maxsize
     }
 
     #[getter]
     fn currsize(&self) -> usize {
-        self.base.currsize
+        self.cache.borrow().currsize
     }
 
     // #[getter]
     // fn data(&self) -> Data {
-    //     self.base.data.clone() // TODO: No Clone
+    //     self.cache.borrow().data.clone() // TODO: No Clone
     // }
     //
     // #[getter]
     // fn datasize(&self) -> Datasize {
-    //     self.base.datasize.clone() // TODO: No Clone
+    //     self.cache.borrow().datasize.clone() // TODO: No Clone
     // }
 }
-
-// Non python imples
-// impl LRUCache {}
 
 #[pyproto]
 impl pyo3::class::basic::PyObjectProtocol for LRUCache {
     fn __repr__(&self) -> String {
         format!(
             "LRUCache(maxsize={}, currsize={})",
-            self.base.maxsize, self.base.currsize
+            self.cache.borrow().maxsize,
+            self.cache.borrow().currsize
         )
     }
 }
 
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for LRUCache {
-    fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
-        self.base.__getitem__(Key::from(key))
+    fn __getitem__(&self, key: &PyAny) -> PyResult<PyObject> {
+        Python::with_gil(move |py| -> PyResult<PyObject> {
+            // pop index
+            let value = self.cache.borrow_mut().__delitem__(Key::from(key))?;
+            // set last
+            let _ = self.cache.borrow_mut().__setitem__(Key::from(key), value.to_object(py));
+
+            Ok(value)
+        })
     }
 
     fn __setitem__(&mut self, key: &PyAny, value: PyObject) -> PyResult<()> {
-        self.base.__setitem__(Key::from(key).clone(), value)
+        self.cache.borrow_mut().__setitem__(Key::from(key).clone(), value)
     }
 
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
-        self.base.__delitem__(Key::from(key)).and_then(|_| Ok(()))
+        self.cache.borrow_mut().__delitem__(Key::from(key)).and_then(|_| Ok(()))
     }
 
     fn __len__(&self) -> usize {
-        self.base.__len__()
+        self.cache.borrow().__len__()
     }
 }
 
 #[pyproto]
 impl pyo3::class::PySequenceProtocol for LRUCache {
     fn __contains__(&self, key: &PyAny) -> bool {
-        self.base.__contains__(Key::from(key))
+        self.cache.borrow().__contains__(Key::from(key))
     }
 }
 
@@ -134,7 +150,7 @@ impl pyo3::class::PySequenceProtocol for LRUCache {
 //     }
 //
 //     fn __next__(mut slf: PyRefMut<Self>) -> PyResult<Key> {
-//         let maybe_item = slf.base.data.iter_mut().next();
+//         let maybe_item = slf.base.borrow().data.iter_mut().next();
 //         if maybe_item.is_none() {
 //             return Err(PyStopIteration::new_err("stop iteration"));
 //         }

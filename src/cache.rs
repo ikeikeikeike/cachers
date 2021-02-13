@@ -123,9 +123,9 @@ impl Cache {
     }
 
     pub fn __delitem__(&mut self, key: Key) -> PyResult<PyObject> {
-        let data = self.data.remove(&key);
+        let data = self.data.shift_remove(&key);
 
-        if let Some(datasize) = self.datasize.remove(&key) {
+        if let Some(datasize) = self.datasize.shift_remove(&key) {
             self.currsize -= datasize
         }
 

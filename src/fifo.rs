@@ -8,7 +8,7 @@ use crate::cache::{Cache, Data, Datasize, Key, MARKER, NONE};
 
 #[pyclass(dict, subclass)]
 pub struct FIFOCache {
-    base: Cache,
+    cache: Cache,
 }
 
 #[pymethods]
@@ -17,27 +17,27 @@ impl FIFOCache {
     #[new]
     fn new(maxsize: usize) -> Self {
         Self {
-            base: Cache::new(maxsize),
+            cache: Cache::new(maxsize),
         }
     }
 
     fn update(&mut self, py: Python, values: PyObject) -> PyResult<()> {
-        self.base.update(py, values.cast_as::<PyDict>(py)?.items())
+        self.cache.update(py, values.cast_as::<PyDict>(py)?.items())
     }
 
     #[args(default = "None")]
     fn get(&self, py: Python, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
+        self.cache.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
     }
 
     #[args(default = "MARKER.get().unwrap().clone()")]
     fn pop(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base.pop(py, Key::from(key), default)
+        self.cache.pop(py, Key::from(key), default)
     }
 
     #[args(default = "None")]
     fn setdefault(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.base
+        self.cache
             .setdefault(py, Key::from(key), default.as_ref())
             .map(|t| t.clone()) // TODO: No Clone
     }
@@ -64,27 +64,27 @@ impl FIFOCache {
     // }
 
     fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        self.base.popitem()
+        self.cache.popitem()
     }
 
     #[getter]
     fn maxsize(&self) -> usize {
-        self.base.maxsize
+        self.cache.maxsize
     }
 
     #[getter]
     fn currsize(&self) -> usize {
-        self.base.currsize
+        self.cache.currsize
     }
 
     // #[getter]
     // fn data(&self) -> Data {
-    //     self.base.data.clone() // TODO: No Clone
+    //     self.cache.data.clone() // TODO: No Clone
     // }
     //
     // #[getter]
     // fn datasize(&self) -> Datasize {
-    //     self.base.datasize.clone() // TODO: No Clone
+    //     self.cache.datasize.clone() // TODO: No Clone
     // }
 }
 
@@ -96,7 +96,7 @@ impl pyo3::class::basic::PyObjectProtocol for FIFOCache {
     fn __repr__(&self) -> String {
         format!(
             "FIFOCache(maxsize={}, currsize={})",
-            self.base.maxsize, self.base.currsize
+            self.cache.maxsize, self.cache.currsize
         )
     }
 }
@@ -104,26 +104,26 @@ impl pyo3::class::basic::PyObjectProtocol for FIFOCache {
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for FIFOCache {
     fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
-        self.base.__getitem__(Key::from(key))
+        self.cache.__getitem__(Key::from(key))
     }
 
     fn __setitem__(&mut self, key: &PyAny, value: PyObject) -> PyResult<()> {
-        self.base.__setitem__(Key::from(key).clone(), value)
+        self.cache.__setitem__(Key::from(key).clone(), value)
     }
 
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
-        self.base.__delitem__(Key::from(key)).and_then(|_| Ok(()))
+        self.cache.__delitem__(Key::from(key)).and_then(|_| Ok(()))
     }
 
     fn __len__(&self) -> usize {
-        self.base.__len__()
+        self.cache.__len__()
     }
 }
 
 #[pyproto]
 impl pyo3::class::PySequenceProtocol for FIFOCache {
     fn __contains__(&self, key: &PyAny) -> bool {
-        self.base.__contains__(Key::from(key))
+        self.cache.__contains__(Key::from(key))
     }
 }
 
