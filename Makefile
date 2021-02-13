@@ -26,6 +26,11 @@ watch-test-one:  ## watch pytest-one task: faster option RUSTFLAGS="-C link-arg=
 	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest-one'
 
 
+.PHONY: watch-bench
+watch-bench:  ## watch pytest-one task: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+	RUST_BACKTRACE=1 cargo watch -s 'poetry run maturin develop --release && poetry run pytest tests -s ; python -m IPython tests/bench.py'
+
+
 .PHONY: build
 build:  ## Builds Rust code and Python modules
 	poetry run maturin build
@@ -34,6 +39,11 @@ build:  ## Builds Rust code and Python modules
 .PHONY: develop
 develop:  ## Installs the crate as module in the current virtualenv, see $VIRTUAL_ENV
 	poetry run maturin develop
+
+
+.PHONY: develop-release
+develop-release:  ## Installs the crate as module in the current virtualenv, see $VIRTUAL_ENV
+	poetry run maturin develop --release
 
 
 .PHONY: pytest-one

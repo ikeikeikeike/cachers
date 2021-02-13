@@ -8,9 +8,9 @@ use pyo3::PyResult;
 
 use from_variants::FromVariants;
 use indexmap::IndexMap;
-use itertools::Itertools;
+// use itertools::Itertools;
 use once_cell::sync::OnceCell;
-use rustc_hash::FxHashMap;
+// use rustc_hash::FxHashMap;
 
 #[derive(Clone, Eq, PartialEq, Hash, strum_macros::ToString, FromVariants)]
 pub enum Key {
@@ -65,15 +65,11 @@ impl IntoPy<PyObject> for Key {
 pub static MARKER: OnceCell<PyObject> = OnceCell::new();
 pub static NONE: OnceCell<PyObject> = OnceCell::new();
 
-pub type Data = IndexMap<Key, PyObject>; // TODO: enum(FxHashMap, IndexMap)
-pub type Datasize = IndexMap<Key, usize>; // TODO: enum(FxHashMap, IndexMap)
+pub type Data = IndexMap<Key, PyObject>; // TODO: generics(FxHashMap, IndexMap)
 
 pub struct Cache {
     /// A pool of caches
     pub data: Data,
-
-    /// A pool of clients size
-    pub datasize: Datasize,
 
     /// A internal counter for assigning new cache indexes
     pub currsize: usize,
@@ -87,14 +83,13 @@ impl Cache {
     pub fn new(maxsize: usize) -> Self {
         Self {
             data: Data::default(),
-            datasize: Datasize::default(),
             currsize: 0,
             maxsize,
         }
     }
 
     pub fn __repr__(&self) -> String {
-        format!("Cache(maxsize={}, currsize={})", self.maxsize, self.currsize,)
+        format!("Cache(maxsize={}, currsize={})", self.maxsize, self.currsize)
     }
 
     pub fn __getitem__(&self, key: Key) -> PyResult<&PyObject> {
@@ -103,33 +98,41 @@ impl Cache {
 
     pub fn __setitem__(&mut self, key: Key, value: PyObject) -> PyResult<()> {
         let maxsize = self.maxsize;
-        let size = 1;
-        let mut diffsize = 1;
 
         if !self.data.contains_key(&key) {
-            while self.currsize + size > maxsize {
+            while self.currsize + 1 > maxsize {
                 let _ = self.popitem();
             }
         }
 
-        if let Some(datasize) = self.datasize.get(&key) {
-            diffsize = size - datasize
-        }
+        // TODO: insert every time returns None
+        //
+        // self.data.insert(key.clone(), value).map_or_else(
+        //     || {
+        //         Err(PyKeyError::new_err(key))
+        //     },
+        //     |_| {
+        //         self.currsize += size;
+        //         Ok(())
+        //     },
+        // )
 
         self.data.insert(key.clone(), value);
-        self.datasize.insert(key, size);
-        self.currsize += diffsize;
+        self.currsize = self.data.len();
+
         Ok(())
     }
 
-    pub fn __delitem__(&mut self, key: Key) -> PyResult<PyObject> {
-        let data = self.data.shift_remove(&key);
+    pub fn __delitem__(&mut self, key: Key) -> PyResult<()> {
+        let size = 1;
 
-        if let Some(datasize) = self.datasize.shift_remove(&key) {
-            self.currsize -= datasize
-        }
-
-        data.ok_or(PyKeyError::new_err(key))
+        self.data.remove(&key).map_or_else(
+            || Err(PyKeyError::new_err(key)),
+            |_| {
+                self.currsize -= size;
+                Ok(())
+            },
+        )
     }
 
     pub fn __contains__(&self, key: Key) -> bool {
@@ -146,8 +149,7 @@ impl Cache {
             let key = Key::from(tuple.get_item(0)?);
             let value = tuple.get_item(1)?.to_object(py);
 
-            let _ = self.__setitem__(key, value);
-            Ok(())
+            self.__setitem__(key, value)
         })
     }
 
@@ -159,14 +161,22 @@ impl Cache {
         }
     }
 
-    pub fn pop(&mut self, py: Python, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.__delitem__(key).or_else(|err| {
-            if MARKER.get() == default.as_ref() {
-                return Err(err);
-            }
+    pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
+        let size = 1;
 
-            default.map_or(Ok(py.None()), |elt| Ok(elt))
-        })
+        self.data.remove(&key).map_or_else(
+            || {
+                if MARKER.get() == default.as_ref() {
+                    return Err(PyKeyError::new_err(key));
+                }
+
+                Ok(default.map_or_else(|| unsafe { NONE.get_unchecked() }.clone(), |elt| elt))
+            },
+            |elt| {
+                self.currsize -= size;
+                Ok(elt)
+            },
+        )
     }
 
     pub fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
@@ -179,7 +189,7 @@ impl Cache {
         let item = maybe_item.unwrap();
 
         let key = item.0.clone(); // TODO: no clone
-        let value = self.__delitem__(key.clone())?; // TODO: no clone
+        let value = self.pop(key.clone(), MARKER.get().map(|elt| elt.clone()))?; // TODO: no clone
 
         Ok((key.clone(), value))
     }

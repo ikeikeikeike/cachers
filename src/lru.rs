@@ -4,9 +4,15 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::PyResult;
 
-use itertools::Itertools;
+// use itertools::Itertools;
 
-use crate::cache::{Cache, Data, Datasize, Key, MARKER};
+use crate::cache::{
+    Cache,
+    // NONE,
+    // Data,
+    Key,
+    MARKER,
+};
 
 #[pyclass(dict, subclass)]
 pub struct LRUCache {
@@ -41,8 +47,8 @@ impl LRUCache {
     }
 
     #[args(default = "MARKER.get().unwrap().clone()")]
-    fn pop(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.cache.borrow_mut().pop(py, Key::from(key), default)
+    fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.cache.borrow_mut().pop(Key::from(key), default)
     }
 
     #[args(default = "None")]
@@ -115,7 +121,10 @@ impl pyo3::class::PyMappingProtocol for LRUCache {
     fn __getitem__(&self, key: &PyAny) -> PyResult<PyObject> {
         Python::with_gil(move |py| -> PyResult<PyObject> {
             // pop index
-            let value = self.cache.borrow_mut().__delitem__(Key::from(key))?;
+            let value = self
+                .cache
+                .borrow_mut()
+                .pop(Key::from(key), MARKER.get().map(|elt| elt.clone()))?;
             // set last
             let _ = self.cache.borrow_mut().__setitem__(Key::from(key), value.to_object(py));
 
@@ -128,7 +137,7 @@ impl pyo3::class::PyMappingProtocol for LRUCache {
     }
 
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
-        self.cache.borrow_mut().__delitem__(Key::from(key)).and_then(|_| Ok(()))
+        self.cache.borrow_mut().__delitem__(Key::from(key))
     }
 
     fn __len__(&self) -> usize {

@@ -2,9 +2,15 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::PyResult;
 
-use itertools::Itertools;
+// use itertools::Itertools;
 
-use crate::cache::{Cache, Data, Datasize, Key, MARKER};
+use crate::cache::{
+    Cache,
+    // NONE,
+    // Data,
+    Key,
+    MARKER,
+};
 
 #[pyclass(dict, subclass)]
 pub struct MRUCache {
@@ -31,8 +37,8 @@ impl MRUCache {
     }
 
     #[args(default = "MARKER.get().unwrap().clone()")]
-    fn pop(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.cache.pop(py, Key::from(key), default)
+    fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
+        self.cache.pop(Key::from(key), default)
     }
 
     #[args(default = "None")]
@@ -112,7 +118,7 @@ impl pyo3::class::PyMappingProtocol for MRUCache {
     }
 
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
-        self.cache.__delitem__(Key::from(key)).and_then(|_| Ok(()))
+        self.cache.__delitem__(Key::from(key))
     }
 
     fn __len__(&self) -> usize {
