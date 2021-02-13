@@ -4,16 +4,16 @@ use pyo3::PyResult;
 
 use itertools::Itertools;
 
-use crate::cache::{Cache, Data, Datasize, Key, MARKER, NONE};
+use crate::cache::{Cache, Data, Datasize, Key, MARKER};
 
 #[pyclass(dict, subclass)]
-pub struct FIFOCache {
+pub struct LRUCache {
     base: Cache,
 }
 
 #[pymethods]
-impl FIFOCache {
-    /// Create a new FIFOCache with a given ....
+impl LRUCache {
+    /// Create a new LRUCache with a given ....
     #[new]
     fn new(maxsize: usize) -> Self {
         Self {
@@ -89,20 +89,20 @@ impl FIFOCache {
 }
 
 // Non python imples
-// impl FIFOCache {}
+// impl LRUCache {}
 
 #[pyproto]
-impl pyo3::class::basic::PyObjectProtocol for FIFOCache {
+impl pyo3::class::basic::PyObjectProtocol for LRUCache {
     fn __repr__(&self) -> String {
         format!(
-            "FIFOCache(maxsize={}, currsize={})",
+            "LRUCache(maxsize={}, currsize={})",
             self.base.maxsize, self.base.currsize
         )
     }
 }
 
 #[pyproto]
-impl pyo3::class::PyMappingProtocol for FIFOCache {
+impl pyo3::class::PyMappingProtocol for LRUCache {
     fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
         self.base.__getitem__(Key::from(key))
     }
@@ -121,14 +121,14 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
 }
 
 #[pyproto]
-impl pyo3::class::PySequenceProtocol for FIFOCache {
+impl pyo3::class::PySequenceProtocol for LRUCache {
     fn __contains__(&self, key: &PyAny) -> bool {
         self.base.__contains__(Key::from(key))
     }
 }
 
 // #[pyproto]
-// impl pyo3::class::PyIterProtocol for FIFOCache {
+// impl pyo3::class::PyIterProtocol for LRUCache {
 //     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
 //         slf
 //     }

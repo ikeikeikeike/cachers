@@ -3,10 +3,11 @@ use strum_macros;
 
 use pyo3::exceptions::PyKeyError;
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyString};
+use pyo3::types::PyAny;
 use pyo3::PyResult;
 
 use from_variants::FromVariants;
+use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
@@ -36,6 +37,20 @@ impl From<&PyAny> for Key {
     }
 }
 
+impl<'source> FromPyObject<'source> for Key {
+    fn extract(ob: &'source PyAny) -> PyResult<Self> {
+        if let Ok(value) = ob.extract::<bool>() {
+            Ok(Key::Bool(value))
+        } else if let Ok(value) = ob.extract::<i64>() {
+            Ok(Key::Int(value))
+        } else if let Ok(value) = ob.extract::<String>() {
+            Ok(Key::Str(value))
+        } else {
+            Ok(Key::Null)
+        }
+    }
+}
+
 impl IntoPy<PyObject> for Key {
     fn into_py(self, py: Python) -> PyObject {
         match self {
@@ -47,40 +62,18 @@ impl IntoPy<PyObject> for Key {
     }
 }
 
-// impl pyo3::callback::IntoPyCallbackOutput<bool> for Key {
-//     // #[inline]
-//     fn convert(self, _py: Python) -> PyResult<bool> {
-//         Ok(true)
-//     }
-// }
-// impl pyo3::callback::IntoPyCallbackOutput<i64> for Key {
-//     // #[inline]
-//     fn convert(self, _py: Python) -> PyResult<i64> {
-//         Ok(1)
-//     }
-// }
-// impl pyo3::callback::IntoPyCallbackOutput<String> for Key {
-//     // #[inline]
-//     fn convert(self, _py: Python) -> PyResult<String> {
-//         Ok(String::from("true"))
-//     }
-// }
-// impl pyo3::callback::IntoPyCallbackOutput<Null> for Key {
-//     #[inline]
-//     fn convert(self, _py: Python) -> PyResult<Null> {
-//         Ok(Null)
-//     }
-// }
-
 pub static MARKER: OnceCell<PyObject> = OnceCell::new();
+pub static NONE: OnceCell<PyObject> = OnceCell::new();
 
-pub type Data = FxHashMap<Key, PyObject>;
+pub type Data = IndexMap<Key, PyObject>; // TODO: enum(FxHashMap, IndexMap)
+pub type Datasize = IndexMap<Key, usize>; // TODO: enum(FxHashMap, IndexMap)
+
 pub struct Cache {
     /// A pool of caches
     pub data: Data,
 
     /// A pool of clients size
-    pub datasize: FxHashMap<Key, usize>,
+    pub datasize: Datasize,
 
     /// A internal counter for assigning new cache indexes
     pub currsize: usize,
@@ -93,8 +86,8 @@ impl Cache {
     /// Create a new cache with a given ....
     pub fn new(maxsize: usize) -> Self {
         Self {
-            data: FxHashMap::default(),
-            datasize: FxHashMap::default(),
+            data: Data::default(),
+            datasize: Datasize::default(),
             currsize: 0,
             maxsize,
         }
@@ -158,11 +151,11 @@ impl Cache {
         })
     }
 
-    pub fn get<'a>(&'a self, key: Key, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
+    pub fn get<'a>(&'a self, _py: Python, key: Key, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
         if let Some(value) = self.data.get(&key) {
             Ok(value)
         } else {
-            default.ok_or(PyKeyError::new_err(key))
+            Ok(default.unwrap_or_else(|| unsafe { NONE.get_unchecked() }))
         }
     }
 
