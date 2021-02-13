@@ -36,7 +36,7 @@ impl FIFOCache {
         self.cache.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
     }
 
-    #[args(default = "MARKER.get().unwrap().clone()")]
+    #[args(default = "unsafe { MARKER.get_unchecked() }.clone()")]
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.pop(Key::from(key), default)
     }
@@ -109,6 +109,7 @@ impl pyo3::class::basic::PyObjectProtocol for FIFOCache {
 
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for FIFOCache {
+    #[inline]
     fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
         self.cache.__getitem__(Key::from(key))
     }
@@ -123,7 +124,6 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
         self.cache.__delitem__(Key::from(key))
     }
 
-    #[inline]
     fn __len__(&self) -> usize {
         self.cache.__len__()
     }
@@ -131,7 +131,6 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
 
 #[pyproto]
 impl pyo3::class::PySequenceProtocol for FIFOCache {
-    #[inline]
     fn __contains__(&self, key: &PyAny) -> bool {
         self.cache.__contains__(Key::from(key))
     }

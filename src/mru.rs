@@ -36,7 +36,7 @@ impl MRUCache {
         self.cache.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
     }
 
-    #[args(default = "MARKER.get().unwrap().clone()")]
+    #[args(default = "unsafe { MARKER.get_unchecked() }.clone()")]
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.pop(Key::from(key), default)
     }
@@ -109,14 +109,17 @@ impl pyo3::class::basic::PyObjectProtocol for MRUCache {
 
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for MRUCache {
+    #[inline]
     fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
         self.cache.__getitem__(Key::from(key))
     }
 
+    #[inline]
     fn __setitem__(&mut self, key: &PyAny, value: PyObject) -> PyResult<()> {
         self.cache.__setitem__(Key::from(key).clone(), value)
     }
 
+    #[inline]
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
         self.cache.__delitem__(Key::from(key))
     }

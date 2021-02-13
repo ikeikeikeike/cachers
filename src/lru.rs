@@ -46,7 +46,7 @@ impl LRUCache {
             .map(|t| t.clone()) // TODO: No Clone
     }
 
-    #[args(default = "MARKER.get().unwrap().clone()")]
+    #[args(default = "unsafe { MARKER.get_unchecked() }.clone()")]
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.borrow_mut().pop(Key::from(key), default)
     }
@@ -118,6 +118,7 @@ impl pyo3::class::basic::PyObjectProtocol for LRUCache {
 
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for LRUCache {
+    #[inline]
     fn __getitem__(&self, key: &PyAny) -> PyResult<PyObject> {
         Python::with_gil(move |py| -> PyResult<PyObject> {
             // pop index
@@ -132,10 +133,12 @@ impl pyo3::class::PyMappingProtocol for LRUCache {
         })
     }
 
+    #[inline]
     fn __setitem__(&mut self, key: &PyAny, value: PyObject) -> PyResult<()> {
         self.cache.borrow_mut().__setitem__(Key::from(key).clone(), value)
     }
 
+    #[inline]
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
         self.cache.borrow_mut().__delitem__(Key::from(key))
     }

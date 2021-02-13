@@ -12,23 +12,23 @@ help:  ## Show all of tasks
 
 
 .PHONY: watch-build
-watch-build:  ## watch build: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
+watch-build:  ## watch build
 	RUST_BACKTRACE=1 cargo watch -x 'build'
 
 
-.PHONY: watch-pytest
-watch-test:  ## watch pytest task: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest'
+.PHONY: watch-test
+watch-test:  ## watch test task
+	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make test'
 
 
-.PHONY: watch-pytest-one
-watch-test-one:  ## watch pytest-one task: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make pytest-one'
+.PHONY: watch-test-one
+watch-test-one:  ## watch test-one task
+	RUST_BACKTRACE=1 cargo watch -s '/usr/bin/make test-one'
 
 
 .PHONY: watch-bench
-watch-bench:  ## watch pytest-one task: faster option RUSTFLAGS="-C link-arg=-fuse-ld=lld"
-	RUST_BACKTRACE=1 cargo watch -s 'poetry run maturin develop --release && poetry run pytest tests -s ; python -m IPython tests/bench.py'
+watch-bench:  ## watch benchmark
+	RUSTFLAGS="-C target-cpu=native" cargo watch -s 'poetry run maturin develop --release && poetry run pytest tests -s ; python -m IPython tests/bench.py'
 
 
 .PHONY: build
@@ -42,15 +42,15 @@ develop:  ## Installs the crate as module in the current virtualenv, see $VIRTUA
 
 
 .PHONY: develop-release
-develop-release:  ## Installs the crate as module in the current virtualenv, see $VIRTUAL_ENV
-	poetry run maturin develop --release
+develop-release:  ## Installs release built the crate as module in the current virtualenv, see $VIRTUAL_ENV
+	RUSTFLAGS="-C target-cpu=native" poetry run maturin develop --release
 
 
-.PHONY: pytest-one
-pytest-one:  develop  ## Running tox
+.PHONY: test-one
+test-one:  develop  ## Running tox
 	poetry run pytest tests -s
 
 
-.PHONY: pytest
-pytest:  develop  ## Running tox on parallel
+.PHONY: test
+test:  develop  ## Running tox on parallel
 	poetry run tox --parallel

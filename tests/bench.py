@@ -3,17 +3,23 @@ from IPython import get_ipython
 import cachers
 
 ipython = get_ipython()
-assert ipython is not None, 'No IPython! Run with $ ipython ...'
+assert ipython is not None
 
-value = 'value' * 1024
+value = '*'
 
 print('FIFO set')
-dc = cachers.FIFOCache(maxsize=10000)
-ipython.magic("timeit -n 100000 -r 7 dc['key'] = value")
+dc = cachers.FIFOCache(maxsize=1000)
+ipython.magic("timeit -n 10 -r 7 for i in range(0, 10000): dc[i] = value * i")
+
 print('FIFO get')
-ipython.magic("timeit -n 100000 -r 7 dc['key']")
+dc = cachers.FIFOCache(maxsize=10000)
+for i in range(0, 10000):
+    dc[i] = value * i
+ipython.magic("timeit -n 10 -r 7 for i in range(0, 10000): dc[i]")
+
 print('FIFO set/delete')
-ipython.magic("timeit -n 100000 -r 7 dc['key'] = value; del dc['key']")
+dc = cachers.FIFOCache(maxsize=10000)
+ipython.magic("timeit -n 10 -r 7 for i in range(0, 10000): dc[i] = value * i; del dc[i]")
 
 print("\n", "-" * 10, "\n")
 
@@ -23,9 +29,15 @@ except ImportError:
     print('Error: Cannot import cachetools')
 else:
     print('cachetools.FIFO set')
-    dc = cachetools.FIFOCache(maxsize=10000)
-    ipython.magic("timeit -n 100000 -r 7 dc['key'] = value")
+    dc = cachetools.FIFOCache(maxsize=1000)
+    ipython.magic("timeit -n 10 -r 7 for i in range(0, 10000): dc[i] = value * i")
+
     print('cachetools.FIFO get')
-    ipython.magic("timeit -n 100000 -r 7 dc['key']")
+    dc = cachetools.FIFOCache(maxsize=10000)
+    for i in range(0, 10000):
+        dc[i] = value * i
+    ipython.magic("timeit -n 10 -r 7 for i in range(0, 10000): dc[i]")
+
     print('cachetools.FIFO set/delete')
-    ipython.magic("timeit -n 100000 -r 7 dc['key'] = value; del dc['key']")
+    dc = cachetools.FIFOCache(maxsize=10000)
+    ipython.magic("timeit -n 10 -r 7 for i in range(0, 10000): dc[i] = value * i; del dc[i]")

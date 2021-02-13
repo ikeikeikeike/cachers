@@ -92,10 +92,12 @@ impl Cache {
         format!("Cache(maxsize={}, currsize={})", self.maxsize, self.currsize)
     }
 
+    #[inline]
     pub fn __getitem__(&self, key: Key) -> PyResult<&PyObject> {
         self.data.get(&key).ok_or(PyKeyError::new_err(key))
     }
 
+    #[inline]
     pub fn __setitem__(&mut self, key: Key, value: PyObject) -> PyResult<()> {
         let maxsize = self.maxsize;
 
@@ -161,6 +163,7 @@ impl Cache {
         }
     }
 
+    #[inline]
     pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
         let size = 1;
 
@@ -179,6 +182,7 @@ impl Cache {
         )
     }
 
+    #[inline]
     pub fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
         let maybe_item = self.data.iter_mut().next();
 
