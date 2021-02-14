@@ -4,7 +4,8 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::PyResult;
 
-// use itertools::Itertools;
+use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::cache::{
     Cache,
@@ -94,15 +95,10 @@ impl LRUCache {
         self.cache.borrow().currsize
     }
 
-    // #[getter]
-    // fn data(&self) -> Data {
-    //     self.cache.borrow().data.clone() // TODO: No Clone
-    // }
-    //
-    // #[getter]
-    // fn datasize(&self) -> Datasize {
-    //     self.cache.borrow().datasize.clone() // TODO: No Clone
-    // }
+    #[getter]
+    fn data(&self) -> Vec<(Key, PyObject)> {
+        self.cache.borrow().data.clone().into_iter().collect()
+    }
 }
 
 #[pyproto]

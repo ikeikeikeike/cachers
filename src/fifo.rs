@@ -2,7 +2,8 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::PyResult;
 
-// use itertools::Itertools;
+use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::cache::{
     Cache,
@@ -84,14 +85,19 @@ impl FIFOCache {
     }
 
     // #[getter]
-    // fn data(&self) -> Data {
-    //     self.cache.data.clone() // TODO: No Clone
-    // }
+    // fn data(&self) -> FxHashMap<Key, PyObject> {
+    //     let mut fxmap = FxHashMap::default();
+    //     for (key, value) in self.cache.data.clone() {
+    //         // TODO: No Clone
+    //         fxmap.insert(key, value);
+    //     }
     //
-    // #[getter]
-    // fn datasize(&self) -> Datasize {
-    //     self.cache.datasize.clone() // TODO: No Clone
+    //     fxmap
     // }
+    #[getter]
+    fn data(&self) -> Vec<(Key, PyObject)> {
+        self.cache.data.clone().into_iter().collect()
+    }
 }
 
 // Non python imples

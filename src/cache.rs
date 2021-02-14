@@ -8,9 +8,8 @@ use pyo3::PyResult;
 
 use from_variants::FromVariants;
 use indexmap::IndexMap;
-// use itertools::Itertools;
+use itertools::Itertools;
 use once_cell::sync::OnceCell;
-// use rustc_hash::FxHashMap;
 
 #[derive(Clone, Eq, PartialEq, Hash, strum_macros::ToString, FromVariants)]
 pub enum Key {
@@ -62,7 +61,9 @@ impl IntoPy<PyObject> for Key {
     }
 }
 
+// Pool value as Default value
 pub static MARKER: OnceCell<PyObject> = OnceCell::new();
+// Pool value as Default value
 pub static NONE: OnceCell<PyObject> = OnceCell::new();
 
 pub type Data = IndexMap<Key, PyObject>; // TODO: generics(FxHashMap, IndexMap)
@@ -128,7 +129,7 @@ impl Cache {
     pub fn __delitem__(&mut self, key: Key) -> PyResult<()> {
         let size = 1;
 
-        self.data.remove(&key).map_or_else(
+        self.data.shift_remove(&key).map_or_else(
             || Err(PyKeyError::new_err(key)),
             |_| {
                 self.currsize -= size;
@@ -167,7 +168,7 @@ impl Cache {
     pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
         let size = 1;
 
-        self.data.remove(&key).map_or_else(
+        self.data.shift_remove(&key).map_or_else(
             || {
                 if MARKER.get() == default.as_ref() {
                     return Err(PyKeyError::new_err(key));
