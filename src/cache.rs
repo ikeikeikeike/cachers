@@ -151,7 +151,7 @@ impl Cache {
         let size = 1;
 
         // XXX: use swap remove
-        self.data.remove(&key).map_or_else(
+        self.data.shift_remove(&key).map_or_else(
             || Err(PyKeyError::new_err(key)),
             |_| {
                 self.currsize -= size;
@@ -166,7 +166,7 @@ impl Cache {
 
         // XXX: use swap remove
         // TODO: remove_entry
-        self.data.remove(&key).map_or_else(
+        self.data.shift_remove(&key).map_or_else(
             || {
                 if MARKER.get() == default.as_ref() {
                     return Err(PyKeyError::new_err(key));

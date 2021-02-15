@@ -109,3 +109,4 @@ Cargo.lock
 core
 /perf.data
 /perf.data.old
+/.benchmarks

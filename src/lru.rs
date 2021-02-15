@@ -51,6 +51,7 @@ impl LRUCache {
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.borrow_mut().pop(Key::from(key), default)
     }
+
     fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
         self.cache.borrow_mut().popitem()
     }
@@ -116,17 +117,16 @@ impl pyo3::class::basic::PyObjectProtocol for LRUCache {
 impl pyo3::class::PyMappingProtocol for LRUCache {
     #[inline]
     fn __getitem__(&self, key: &PyAny) -> PyResult<PyObject> {
-        Python::with_gil(move |py| -> PyResult<PyObject> {
-            // pop index
-            let value = self
-                .cache
-                .borrow_mut()
-                .pop(Key::from(key), MARKER.get().map(|elt| elt.clone()))?;
-            // set last
-            let _ = self.cache.borrow_mut().__setitem__(Key::from(key), value.to_object(py));
+        // pop index
+        let value = self
+            .cache
+            .borrow_mut()
+            .pop(Key::from(key), MARKER.get().map(|elt| elt.clone()))?;
 
-            Ok(value)
-        })
+        // set last
+        let _ = self.cache.borrow_mut().__setitem__(Key::from(key), value.clone());
+
+        Ok(value)
     }
 
     #[inline]
