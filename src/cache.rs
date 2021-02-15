@@ -7,9 +7,13 @@ use pyo3::types::PyAny;
 use pyo3::PyResult;
 
 use from_variants::FromVariants;
-use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::OnceCell;
+
+use indexmap::IndexMap;
+// use std::collections::HashMap;
+// use hashbrown::HashMap;
+// use rustc_hash::FxHashMap;
 
 #[derive(Clone, Eq, PartialEq, Hash, strum_macros::ToString, FromVariants)]
 pub enum Key {
@@ -17,12 +21,14 @@ pub enum Key {
     Bool(bool),
     Int(i64),
     Str(String),
-    // IntTuple(usize, usize), // input is a 2-tuple with positive ints
-    // StringIntTuple(String, usize), // input is a 2-tuple with String and int
-    // (Key, Key),
+    // Key, Key
+    // IntTuple(i64, i64), TODO:
+    // StringIntTuple(String, i64), TODO:
+    // IntStringTuple(i64, String), TODO:
 }
 
 impl From<&PyAny> for Key {
+    #[inline]
     fn from(key: &PyAny) -> Self {
         if let Ok(value) = key.extract::<bool>() {
             Key::Bool(value)
@@ -37,6 +43,7 @@ impl From<&PyAny> for Key {
 }
 
 impl<'source> FromPyObject<'source> for Key {
+    #[inline]
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
         if let Ok(value) = ob.extract::<bool>() {
             Ok(Key::Bool(value))
@@ -51,6 +58,7 @@ impl<'source> FromPyObject<'source> for Key {
 }
 
 impl IntoPy<PyObject> for Key {
+    #[inline]
     fn into_py(self, py: Python) -> PyObject {
         match self {
             Key::Bool(value) => value.to_object(py),
@@ -81,6 +89,7 @@ pub struct Cache {
 
 impl Cache {
     /// Create a new cache with a given ....
+    #[inline]
     pub fn new(maxsize: usize) -> Self {
         Self {
             data: Data::default(),
@@ -89,6 +98,7 @@ impl Cache {
         }
     }
 
+    #[inline]
     pub fn __repr__(&self) -> String {
         format!("Cache(maxsize={}, currsize={})", self.maxsize, self.currsize)
     }
@@ -126,10 +136,12 @@ impl Cache {
         Ok(())
     }
 
+    #[inline]
     pub fn __delitem__(&mut self, key: Key) -> PyResult<()> {
         let size = 1;
 
-        self.data.shift_remove(&key).map_or_else(
+        // XXX: use swap remove
+        self.data.remove(&key).map_or_else(
             || Err(PyKeyError::new_err(key)),
             |_| {
                 self.currsize -= size;
@@ -138,14 +150,17 @@ impl Cache {
         )
     }
 
+    #[inline]
     pub fn __contains__(&self, key: Key) -> bool {
         self.data.contains_key(&key)
     }
 
+    #[inline]
     pub fn __len__(&self) -> usize {
         self.data.len()
     }
 
+    #[inline]
     pub fn update(&mut self, py: Python, values: &PyAny) -> PyResult<()> {
         values.iter()?.try_for_each(|elt| -> PyResult<()> {
             let tuple = elt?;
@@ -156,6 +171,7 @@ impl Cache {
         })
     }
 
+    #[inline]
     pub fn get<'a>(&'a self, _py: Python, key: Key, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
         if let Some(value) = self.data.get(&key) {
             Ok(value)
@@ -168,7 +184,8 @@ impl Cache {
     pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
         let size = 1;
 
-        self.data.shift_remove(&key).map_or_else(
+        // XXX: use swap remove
+        self.data.remove(&key).map_or_else(
             || {
                 if MARKER.get() == default.as_ref() {
                     return Err(PyKeyError::new_err(key));
@@ -199,12 +216,13 @@ impl Cache {
         Ok((key.clone(), value))
     }
 
+    #[inline]
     pub fn setdefault<'a>(&'a mut self, py: Python, key: Key, default: Option<&'a PyObject>) -> PyResult<&'a PyObject> {
         if self.data.contains_key(&key) {
             return self.__getitem__(key);
         }
 
-        let uvalue = default.map_or(py.None(), |elm| elm.to_object(py));
+        let uvalue = default.map_or_else(|| unsafe { NONE.get_unchecked() }.clone(), |elm| elm.to_object(py));
         let rvalue = default.ok_or(PyKeyError::new_err(key.to_string()));
 
         let _ = self.__setitem__(key, uvalue);

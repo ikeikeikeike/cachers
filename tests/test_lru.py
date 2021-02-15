@@ -33,3 +33,14 @@ class LRUCacheTest(unittest.TestCase, CacheTestMixin):
         self.assertEqual(cache[4], 4)
         self.assertEqual(cache[5], 5)
         self.assertNotIn(2, cache)
+
+    def test_lru_order(self):
+        cache = LRUCache(maxsize=100)
+
+        for i in range(0, 100):
+            cache[i] = i
+        for i in reversed(range(0, 100)):
+            self.assertEqual(cache[i], i)
+
+        for left, (right, _) in zip(reversed(range(0, 100)), cache.data):
+            self.assertEqual(left, right)

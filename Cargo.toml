@@ -31,6 +31,7 @@ classifier = [
 
 [dependencies]
 from_variants = "0.5.0"
+hashbrown = "0.9.1"
 indexmap = "1.6.1"
 itertools = "0.10.0"
 mimalloc = { version = "0.1.24", default-features = false }

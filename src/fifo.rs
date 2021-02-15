@@ -105,6 +105,7 @@ impl FIFOCache {
 
 #[pyproto]
 impl pyo3::class::basic::PyObjectProtocol for FIFOCache {
+    #[inline]
     fn __repr__(&self) -> String {
         format!(
             "FIFOCache(maxsize={}, currsize={})",
@@ -130,6 +131,7 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
         self.cache.__delitem__(Key::from(key))
     }
 
+    #[inline]
     fn __len__(&self) -> usize {
         self.cache.__len__()
     }
@@ -137,6 +139,7 @@ impl pyo3::class::PyMappingProtocol for FIFOCache {
 
 #[pyproto]
 impl pyo3::class::PySequenceProtocol for FIFOCache {
+    #[inline]
     fn __contains__(&self, key: &PyAny) -> bool {
         self.cache.__contains__(Key::from(key))
     }

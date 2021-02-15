@@ -31,6 +31,39 @@ class CacheTestMixin:
         self.assertEqual(4, cache[4])
         self.assertTrue(1 in cache or 2 in cache or 3 in cache)
 
+    def test_key(self):
+        cache = self.Cache(maxsize=2)
+
+        cache.update({1: 1, 2: 2})
+        self.assertEqual(2, len(cache))
+        self.assertEqual(1, cache[1])
+        self.assertEqual(2, cache[2])
+
+        cache[3] = 3
+        self.assertEqual(2, len(cache))
+        self.assertEqual(3, cache[3])
+        self.assertTrue(1 in cache or 2 in cache)
+
+        cache[4] = 4
+        self.assertEqual(2, len(cache))
+        self.assertEqual(4, cache[4])
+        self.assertTrue(1 in cache or 2 in cache or 3 in cache)
+
+        cache["5"] = "5"
+        self.assertEqual(2, len(cache))
+        self.assertEqual("5", cache["5"])
+        self.assertTrue(1 in cache or 2 in cache or 3 in cache or 4 in cache)
+
+        cache[False] = False
+        self.assertEqual(2, len(cache))
+        self.assertEqual(False, cache[False])
+        self.assertTrue(1 in cache or 2 in cache or 3 in cache or 4 in cache or "5" in cache)
+
+        cache[None] = None
+        self.assertEqual(2, len(cache))
+        self.assertEqual(None, cache[None])
+        self.assertTrue(1 in cache or 2 in cache or 3 in cache or 4 in cache or "5" in cache or False in cache)
+
     def test_update(self):
         cache = self.Cache(maxsize=2)
 

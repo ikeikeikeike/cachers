@@ -103,6 +103,7 @@ impl LRUCache {
 
 #[pyproto]
 impl pyo3::class::basic::PyObjectProtocol for LRUCache {
+    #[inline]
     fn __repr__(&self) -> String {
         format!(
             "LRUCache(maxsize={}, currsize={})",
@@ -139,6 +140,7 @@ impl pyo3::class::PyMappingProtocol for LRUCache {
         self.cache.borrow_mut().__delitem__(Key::from(key))
     }
 
+    #[inline]
     fn __len__(&self) -> usize {
         self.cache.borrow().__len__()
     }
@@ -146,6 +148,7 @@ impl pyo3::class::PyMappingProtocol for LRUCache {
 
 #[pyproto]
 impl pyo3::class::PySequenceProtocol for LRUCache {
+    #[inline]
     fn __contains__(&self, key: &PyAny) -> bool {
         self.cache.borrow().__contains__(Key::from(key))
     }
