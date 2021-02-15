@@ -40,7 +40,7 @@ impl LRUCache {
     }
 
     #[args(default = "None")]
-    fn get(&self, py: Python, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
+    fn get(&self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache
             .borrow()
             .get(py, Key::from(key), default.as_ref())
@@ -50,6 +50,9 @@ impl LRUCache {
     #[args(default = "unsafe { MARKER.get_unchecked() }.clone()")]
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.borrow_mut().pop(Key::from(key), default)
+    }
+    fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
+        self.cache.borrow_mut().popitem()
     }
 
     #[args(default = "None")]
@@ -80,10 +83,6 @@ impl LRUCache {
     //         base: Cache::new(self.maxsize()),
     //     }
     // }
-
-    fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        self.cache.borrow_mut().popitem()
-    }
 
     #[getter]
     fn maxsize(&self) -> usize {

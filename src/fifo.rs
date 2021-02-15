@@ -42,6 +42,10 @@ impl FIFOCache {
         self.cache.pop(Key::from(key), default)
     }
 
+    fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
+        self.cache.popitem()
+    }
+
     #[args(default = "None")]
     fn setdefault(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache
@@ -69,10 +73,6 @@ impl FIFOCache {
     //         base: Cache::new(self.maxsize()),
     //     }
     // }
-
-    fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        self.cache.popitem()
-    }
 
     #[getter]
     fn maxsize(&self) -> usize {

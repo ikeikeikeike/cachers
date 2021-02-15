@@ -104,6 +104,16 @@ impl Cache {
     }
 
     #[inline]
+    pub fn __contains__(&self, key: Key) -> bool {
+        self.data.contains_key(&key)
+    }
+
+    #[inline]
+    pub fn __len__(&self) -> usize {
+        self.data.len()
+    }
+
+    #[inline]
     pub fn __getitem__(&self, key: Key) -> PyResult<&PyObject> {
         self.data.get(&key).ok_or(PyKeyError::new_err(key))
     }
@@ -151,13 +161,40 @@ impl Cache {
     }
 
     #[inline]
-    pub fn __contains__(&self, key: Key) -> bool {
-        self.data.contains_key(&key)
-    }
+    pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
+        let size = 1;
+
+        // XXX: use swap remove
+        // TODO: remove_entry
+        self.data.remove(&key).map_or_else(
+            || {
+                if MARKER.get() == default.as_ref() {
+                    return Err(PyKeyError::new_err(key));
+                }
+
+                Ok(default.map_or_else(|| unsafe { NONE.get_unchecked() }.clone(), |elt| elt))
+            },
+            |elt| {
+                self.currsize -= size;
+                Ok(elt)
+            },
+        )
+    } // TODO: return key, value
 
     #[inline]
-    pub fn __len__(&self) -> usize {
-        self.data.len()
+    pub fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
+        let maybe_item = self.data.iter_mut().next();
+
+        if maybe_item.is_none() {
+            return Err(PyKeyError::new_err("stop iteration"));
+        }
+
+        let item = maybe_item.unwrap();
+
+        let key = item.0.clone(); // TODO: no clone
+        let value = self.pop(key.clone(), MARKER.get().map(|elt| elt.clone()))?; // TODO: no clone
+
+        Ok((key.clone(), value))
     }
 
     #[inline]
@@ -178,42 +215,6 @@ impl Cache {
         } else {
             Ok(default.unwrap_or_else(|| unsafe { NONE.get_unchecked() }))
         }
-    }
-
-    #[inline]
-    pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
-        let size = 1;
-
-        // XXX: use swap remove
-        self.data.remove(&key).map_or_else(
-            || {
-                if MARKER.get() == default.as_ref() {
-                    return Err(PyKeyError::new_err(key));
-                }
-
-                Ok(default.map_or_else(|| unsafe { NONE.get_unchecked() }.clone(), |elt| elt))
-            },
-            |elt| {
-                self.currsize -= size;
-                Ok(elt)
-            },
-        )
-    }
-
-    #[inline]
-    pub fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        let maybe_item = self.data.iter_mut().next();
-
-        if maybe_item.is_none() {
-            return Err(PyKeyError::new_err("stop iteration"));
-        }
-
-        let item = maybe_item.unwrap();
-
-        let key = item.0.clone(); // TODO: no clone
-        let value = self.pop(key.clone(), MARKER.get().map(|elt| elt.clone()))?; // TODO: no clone
-
-        Ok((key.clone(), value))
     }
 
     #[inline]

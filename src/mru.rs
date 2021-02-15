@@ -33,13 +33,17 @@ impl MRUCache {
     }
 
     #[args(default = "None")]
-    fn get(&self, py: Python, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
+    fn get(&self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
     }
 
     #[args(default = "unsafe { MARKER.get_unchecked() }.clone()")]
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache.pop(Key::from(key), default)
+    }
+
+    fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
+        self.cache.popitem()
     }
 
     #[args(default = "None")]
@@ -69,10 +73,6 @@ impl MRUCache {
     //         base: Cache::new(self.maxsize()),
     //     }
     // }
-
-    fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        self.cache.popitem()
-    }
 
     #[getter]
     fn maxsize(&self) -> usize {

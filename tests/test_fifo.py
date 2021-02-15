@@ -5,7 +5,7 @@ from cachers import FIFOCache
 from . import CacheTestMixin
 
 
-class LRUCacheTest(unittest.TestCase, CacheTestMixin):
+class FIFOCacheTest(unittest.TestCase, CacheTestMixin):
 
     Cache = FIFOCache
 
@@ -48,5 +48,5 @@ class LRUCacheTest(unittest.TestCase, CacheTestMixin):
             self.assertEqual(cache[i], i)
         for i in range(200, 250):
             self.assertEqual(cache[i], i)
-        for left, (right, _) in zip(list(range(50, 100)) + list(range(200, 250)), cache.data):
+        for left, (right, _) in zip(list(range(50, 100)) + list(range(200, 250)), cache.keys):
             self.assertEqual(left, right)

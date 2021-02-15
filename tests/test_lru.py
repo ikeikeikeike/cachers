@@ -42,5 +42,5 @@ class LRUCacheTest(unittest.TestCase, CacheTestMixin):
         for i in reversed(range(0, 100)):
             self.assertEqual(cache[i], i)
 
-        for left, (right, _) in zip(reversed(range(0, 100)), cache.data):
+        for left, (right, _) in zip(reversed(range(0, 100)), cache.keys):
             self.assertEqual(left, right)
