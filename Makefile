@@ -33,7 +33,7 @@ watch-bench:  develop-release  ## watch benchmark
 
 .PHONY: watch-bench-compare
 watch-bench-compare:  develop-release  ## watch benchmark
-	RUSTFLAGS="-C target-cpu=native" cargo watch -s 'poetry run pytest tests --benchmark-autosave --benchmark-storage=file:///tmp/.cachers-benchmarks --benchmark-compare --benchmark-max-time=0.1 --benchmark-min-rounds=2'
+	RUSTFLAGS="-C target-cpu=native" cargo watch -s 'poetry run pytest tests --benchmark-autosave --benchmark-storage=file:///tmp/.cachers-benchmarks --benchmark-max-time=0.1 --benchmark-min-rounds=2 --benchmark-compare '
 
 
 .PHONY: build

@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::PyResult;
@@ -15,8 +17,11 @@ use crate::cache::{
 
 #[pyclass(dict, subclass)]
 pub struct MRUCache {
-    cache: Cache,
+    cache: RefCell<Cache>,
 }
+
+// Non python imples
+// impl MRUCache {}
 
 #[pymethods]
 impl MRUCache {
@@ -24,31 +29,37 @@ impl MRUCache {
     #[new]
     fn new(maxsize: usize) -> Self {
         Self {
-            cache: Cache::new(maxsize),
+            cache: RefCell::new(Cache::new(maxsize)),
         }
     }
 
     fn update(&mut self, py: Python, values: PyObject) -> PyResult<()> {
-        self.cache.update(py, values.cast_as::<PyDict>(py)?.items())
+        self.cache
+            .borrow_mut()
+            .update(py, values.cast_as::<PyDict>(py)?.items())
     }
 
     #[args(default = "None")]
     fn get(&self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.cache.get(py, Key::from(key), default.as_ref()).map(|t| t.clone()) // TODO: No Clone
+        self.cache
+            .borrow()
+            .get(py, Key::from(key), default.as_ref())
+            .map(|t| t.clone()) // TODO: No Clone
     }
 
     #[args(default = "unsafe { MARKER.get_unchecked() }.clone()")]
     fn pop(&mut self, _py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
-        self.cache.pop(Key::from(key), default)
+        self.cache.borrow_mut().pop(Key::from(key), default)
     }
 
     fn popitem(&mut self) -> PyResult<(Key, PyObject)> {
-        self.cache.popitem()
+        self.cache.borrow_mut().popitem()
     }
 
     #[args(default = "None")]
     fn setdefault(&mut self, py: Python, key: &PyAny, default: Option<PyObject>) -> PyResult<PyObject> {
         self.cache
+            .borrow_mut()
             .setdefault(py, Key::from(key), default.as_ref())
             .map(|t| t.clone()) // TODO: No Clone
     }
@@ -76,32 +87,19 @@ impl MRUCache {
 
     #[getter]
     fn maxsize(&self) -> usize {
-        self.cache.maxsize
+        self.cache.borrow().maxsize
     }
 
     #[getter]
     fn currsize(&self) -> usize {
-        self.cache.currsize
+        self.cache.borrow().currsize
     }
 
-    // #[getter]
-    // fn data(&self) -> FxHashMap<Key, PyObject> {
-    //     let mut fxmap = FxHashMap::default();
-    //     for (key, value) in self.cache.data.clone() {
-    //         // TODO: No Clone
-    //         fxmap.insert(key, value);
-    //     }
-    //
-    //     fxmap
-    // }
     #[getter]
     fn data(&self) -> Vec<(Key, PyObject)> {
-        self.cache.data.clone().into_iter().collect()
+        self.cache.borrow().data.clone().into_iter().collect()
     }
 }
-
-// Non python imples
-// impl MRUCache {}
 
 #[pyproto]
 impl pyo3::class::basic::PyObjectProtocol for MRUCache {
@@ -109,7 +107,8 @@ impl pyo3::class::basic::PyObjectProtocol for MRUCache {
     fn __repr__(&self) -> String {
         format!(
             "MRUCache(maxsize={}, currsize={})",
-            self.cache.maxsize, self.cache.currsize
+            self.cache.borrow().maxsize,
+            self.cache.borrow().currsize
         )
     }
 }
@@ -117,23 +116,32 @@ impl pyo3::class::basic::PyObjectProtocol for MRUCache {
 #[pyproto]
 impl pyo3::class::PyMappingProtocol for MRUCache {
     #[inline]
-    fn __getitem__(&self, key: &PyAny) -> PyResult<&PyObject> {
-        self.cache.__getitem__(Key::from(key))
+    fn __getitem__(&self, key: &PyAny) -> PyResult<PyObject> {
+        // pop index
+        let value = self
+            .cache
+            .borrow_mut()
+            .pop(Key::from(key), MARKER.get().map(|elt| elt.clone()))?;
+
+        // set last
+        let _ = self.cache.borrow_mut().__setitem__(Key::from(key), value.clone());
+
+        Ok(value)
     }
 
     #[inline]
     fn __setitem__(&mut self, key: &PyAny, value: PyObject) -> PyResult<()> {
-        self.cache.__setitem__(Key::from(key).clone(), value)
+        self.cache.borrow_mut().__setitem__(Key::from(key).clone(), value)
     }
 
     #[inline]
     fn __delitem__(&mut self, key: &PyAny) -> PyResult<()> {
-        self.cache.__delitem__(Key::from(key))
+        self.cache.borrow_mut().__delitem__(Key::from(key))
     }
 
     #[inline]
     fn __len__(&self) -> usize {
-        self.cache.__len__()
+        self.cache.borrow().__len__()
     }
 }
 
@@ -141,7 +149,7 @@ impl pyo3::class::PyMappingProtocol for MRUCache {
 impl pyo3::class::PySequenceProtocol for MRUCache {
     #[inline]
     fn __contains__(&self, key: &PyAny) -> bool {
-        self.cache.__contains__(Key::from(key))
+        self.cache.borrow().__contains__(Key::from(key))
     }
 }
 
@@ -152,7 +160,7 @@ impl pyo3::class::PySequenceProtocol for MRUCache {
 //     }
 //
 //     fn __next__(mut slf: PyRefMut<Self>) -> PyResult<Key> {
-//         let maybe_item = slf.base.data.iter_mut().next();
+//         let maybe_item = slf.base.borrow().data.iter_mut().next();
 //         if maybe_item.is_none() {
 //             return Err(PyStopIteration::new_err("stop iteration"));
 //         }

@@ -11,9 +11,10 @@ use itertools::Itertools;
 use once_cell::sync::OnceCell;
 
 use indexmap::IndexMap;
+use rustc_hash::FxHasher; // FxHashMap
+use std::hash::BuildHasherDefault;
 // use std::collections::HashMap;
 // use hashbrown::HashMap;
-// use rustc_hash::FxHashMap;
 
 #[derive(Clone, Eq, PartialEq, Hash, strum_macros::ToString, FromVariants)]
 pub enum Key {
@@ -74,7 +75,8 @@ pub static MARKER: OnceCell<PyObject> = OnceCell::new();
 // Pool value as Default value
 pub static NONE: OnceCell<PyObject> = OnceCell::new();
 
-pub type Data = IndexMap<Key, PyObject>; // TODO: generics(FxHashMap, IndexMap)
+type BuildHasher = BuildHasherDefault<FxHasher>;
+pub type Data = IndexMap<Key, PyObject, BuildHasher>; // TODO: generics(FxHashMap, IndexMap)
 
 pub struct Cache {
     /// A pool of caches
@@ -92,7 +94,7 @@ impl Cache {
     #[inline]
     pub fn new(maxsize: usize) -> Self {
         Self {
-            data: Data::default(),
+            data: Data::with_capacity_and_hasher(maxsize, BuildHasher::default()),
             currsize: 0,
             maxsize,
         }
@@ -120,10 +122,11 @@ impl Cache {
 
     #[inline]
     pub fn __setitem__(&mut self, key: Key, value: PyObject) -> PyResult<()> {
-        let maxsize = self.maxsize;
-
         if !self.data.contains_key(&key) {
-            while self.currsize + 1 > maxsize {
+            // if self.currsize >= self.maxsize {
+            //     self.data.drain(..maxsize + 1 - self.currsize);
+            // }
+            while self.currsize >= self.maxsize {
                 let _ = self.popitem();
             }
         }
@@ -139,7 +142,6 @@ impl Cache {
         //         Ok(())
         //     },
         // )
-
         self.data.insert(key.clone(), value);
         self.currsize = self.data.len();
 
@@ -148,13 +150,11 @@ impl Cache {
 
     #[inline]
     pub fn __delitem__(&mut self, key: Key) -> PyResult<()> {
-        let size = 1;
-
         // XXX: use swap remove
         self.data.shift_remove(&key).map_or_else(
             || Err(PyKeyError::new_err(key)),
             |_| {
-                self.currsize -= size;
+                self.currsize -= 1;
                 Ok(())
             },
         )
@@ -162,8 +162,6 @@ impl Cache {
 
     #[inline]
     pub fn pop(&mut self, key: Key, default: Option<PyObject>) -> PyResult<PyObject> {
-        let size = 1;
-
         // XXX: use swap remove
         // TODO: remove_entry
         self.data.shift_remove(&key).map_or_else(
@@ -175,7 +173,7 @@ impl Cache {
                 Ok(default.map_or_else(|| unsafe { NONE.get_unchecked() }.clone(), |elt| elt))
             },
             |elt| {
-                self.currsize -= size;
+                self.currsize -= 1;
                 Ok(elt)
             },
         )

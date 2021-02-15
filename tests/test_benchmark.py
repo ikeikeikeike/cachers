@@ -111,20 +111,20 @@ else:
 
     @pytest.mark.benchmark(group='fifo')
     def test_fifo_set_and_delete__1(benchmark):
-        benchmark(_set_and_delete(cachers, "FIFOCache"))
+        benchmark(_set_and_delete(cachetools, "FIFOCache"))
 
     @pytest.mark.benchmark(group='lru')
     def test_lru_set__1(benchmark):
-        benchmark(_set(cachers, "LRUCache"))
+        benchmark(_set(cachetools, "LRUCache"))
 
     @pytest.mark.benchmark(group='lru')
     def test_lru_get__1(benchmark):
-        benchmark(_get(cachers, "LRUCache"))
+        benchmark(_get(cachetools, "LRUCache"))
 
     @pytest.mark.benchmark(group='lru')
     def test_lru_set_and_get__1(benchmark):
-        benchmark(_set_and_get(cachers, "LRUCache"))
+        benchmark(_set_and_get(cachetools, "LRUCache"))
 
     @pytest.mark.benchmark(group='lru')
     def test_lru_set_and_delete__1(benchmark):
-        benchmark(_set_and_delete(cachers, "LRUCache"))
+        benchmark(_set_and_delete(cachetools, "LRUCache"))
