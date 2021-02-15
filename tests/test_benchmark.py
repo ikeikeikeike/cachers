@@ -1,3 +1,4 @@
+import pytest
 import cachers
 
 
@@ -51,34 +52,42 @@ def _set_and_delete(mod, klass):
     return inner
 
 
+@pytest.mark.benchmark(group='fifo')
 def test_fifo_set(benchmark):
     benchmark(_set(cachers, "FIFOCache"))
 
 
+@pytest.mark.benchmark(group='fifo')
 def test_fifo_get(benchmark):
     benchmark(_get(cachers, "FIFOCache"))
 
 
+@pytest.mark.benchmark(group='fifo')
 def test_fifo_set_and_get(benchmark):
     benchmark(_set_and_get(cachers, "FIFOCache"))
 
 
+@pytest.mark.benchmark(group='fifo')
 def test_fifo_set_and_delete(benchmark):
     benchmark(_set_and_delete(cachers, "FIFOCache"))
 
 
+@pytest.mark.benchmark(group='lru')
 def test_lru_set(benchmark):
     benchmark(_set(cachers, "LRUCache"))
 
 
+@pytest.mark.benchmark(group='lru')
 def test_lru_get(benchmark):
     benchmark(_get(cachers, "LRUCache"))
 
 
+@pytest.mark.benchmark(group='lru')
 def test_lru_set_and_get(benchmark):
     benchmark(_set_and_get(cachers, "LRUCache"))
 
 
+@pytest.mark.benchmark(group='lru')
 def test_lru_set_and_delete(benchmark):
     benchmark(_set_and_delete(cachers, "LRUCache"))
 
@@ -88,26 +97,34 @@ try:
 except ImportError:
     print('Error: Cannot import cachetools')
 else:
-    def test_fifo_set_cachetools(benchmark):
+    @pytest.mark.benchmark(group='fifo')
+    def test_fifo_set__1(benchmark):
         benchmark(_set(cachetools, "FIFOCache"))
 
-    def test_fifo_get_cachetools(benchmark):
+    @pytest.mark.benchmark(group='fifo')
+    def test_fifo_get__1(benchmark):
         benchmark(_get(cachetools, "FIFOCache"))
 
-    def test_fifo_set_and_get_cachetools(benchmark):
+    @pytest.mark.benchmark(group='fifo')
+    def test_fifo_set_and_get__1(benchmark):
         benchmark(_set_and_get(cachetools, "FIFOCache"))
 
-    def test_fifo_set_and_delete_cachetools(benchmark):
+    @pytest.mark.benchmark(group='fifo')
+    def test_fifo_set_and_delete__1(benchmark):
         benchmark(_set_and_delete(cachers, "FIFOCache"))
 
-    def test_lru_set_cachetools(benchmark):
+    @pytest.mark.benchmark(group='lru')
+    def test_lru_set__1(benchmark):
         benchmark(_set(cachers, "LRUCache"))
 
-    def test_lru_get_cachetools(benchmark):
+    @pytest.mark.benchmark(group='lru')
+    def test_lru_get__1(benchmark):
         benchmark(_get(cachers, "LRUCache"))
 
-    def test_lru_set_and_get_cachetools(benchmark):
+    @pytest.mark.benchmark(group='lru')
+    def test_lru_set_and_get__1(benchmark):
         benchmark(_set_and_get(cachers, "LRUCache"))
 
-    def test_lru_set_and_delete_cachetools(benchmark):
+    @pytest.mark.benchmark(group='lru')
+    def test_lru_set_and_delete__1(benchmark):
         benchmark(_set_and_delete(cachers, "LRUCache"))
