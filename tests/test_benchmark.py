@@ -29,7 +29,7 @@ def _get(mod, klass):
 
 
 def _set_and_get(mod, klass):
-    dc = getattr(mod, klass)(maxsize=10000)
+    dc = getattr(mod, klass)(maxsize=100000)
 
     def inner():
         for i in range(0, 10000):
